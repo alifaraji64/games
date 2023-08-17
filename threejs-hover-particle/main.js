@@ -1,11 +1,22 @@
 import './style.css'
 import * as THREE from 'three'
 import dat from 'dat.gui'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 var gui = new dat.GUI()
-var world = { width: 5, height: 5 }
-gui.add(world, 'width', 1, 10).onChange(() => {
+var world = { width: 5, height: 5, widthSegment: 10, heightSegment: 10 }
+gui.add(world, 'width', 1, 10).onChange(() => generateMetarial())
+gui.add(world, 'height', 1, 10).onChange(() => generateMetarial())
+gui.add(world, 'widthSegment', 1, 15).onChange(() => generateMetarial())
+gui.add(world, 'heightSegment', 1, 15).onChange(() => generateMetarial())
+
+const generateMetarial = () => {
   mesh.geometry.dispose()
-  mesh.geometry = new THREE.PlaneGeometry(world.width, world.height, 10, 10)
+  mesh.geometry = new THREE.PlaneGeometry(
+    world.width,
+    world.height,
+    world.widthSegment,
+    world.heightSegment
+  )
   const { array } = mesh.geometry.attributes.position
   for (let i = 0; i < array.length; i += 3) {
     const x = array[i]
@@ -14,19 +25,7 @@ gui.add(world, 'width', 1, 10).onChange(() => {
 
     array[i + 2] = z + Math.random()
   }
-})
-gui.add(world, 'height', 1, 10).onChange(() => {
-  mesh.geometry.dispose()
-  mesh.geometry = new THREE.PlaneGeometry(world.width, world.height, 10, 10)
-  const { array } = mesh.geometry.attributes.position
-  for (let i = 0; i < array.length; i += 3) {
-    const x = array[i]
-    const y = array[i + 1]
-    const z = array[i + 2]
-
-    array[i + 2] = z + Math.random()
-  }
-})
+}
 const scene = new THREE.Scene()
 const camera = new THREE.PerspectiveCamera(
   70,
@@ -34,8 +33,11 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 )
+const raycaster = new THREE.Raycaster()
 const renderer = new THREE.WebGLRenderer({ antialias: true })
+const controls = new OrbitControls(camera, renderer.domElement)
 const light = new THREE.DirectionalLight(0xfffff, 1)
+const backLight = new THREE.DirectionalLight(0xfffff, 1)
 renderer.setSize(innerWidth, innerHeight)
 renderer.setPixelRatio(devicePixelRatio)
 
@@ -43,16 +45,18 @@ document.body.appendChild(renderer.domElement)
 
 const geometry = new THREE.PlaneGeometry(5, 5, 10, 10)
 const material = new THREE.MeshPhongMaterial({
-  color: 0x00ff00,
   side: THREE.DoubleSide,
-  flatShading: true
+  flatShading: true,
+  vertexColors: true
 })
 const mesh = new THREE.Mesh(geometry, material)
 
 camera.position.z = 5
-light.position.set(0, 0, 10)
+light.position.set(0, 0, 1)
+backLight.position.set(0, 0, -1)
 scene.add(mesh)
 scene.add(light)
+scene.add(backLight)
 const { array } = mesh.geometry.attributes.position
 for (let i = 0; i < array.length; i += 3) {
   const x = array[i]
@@ -61,8 +65,41 @@ for (let i = 0; i < array.length; i += 3) {
 
   array[i + 2] = z + Math.random()
 }
+let colors = []
+for (let i = 0; i < array.length; i++) {
+  colors.push(0, .19, .6)
+}
+mesh.geometry.setAttribute(
+  'color',
+  new THREE.BufferAttribute(new Float32Array(colors), 3)
+)
+const mouse = { x: undefined, y: undefined }
 function animate () {
   requestAnimationFrame(animate)
+  controls.update()
   renderer.render(scene, camera)
+  raycaster.setFromCamera(mouse, camera)
+  const intersects = raycaster.intersectObject(mesh)
+  if (intersects.length) {
+    const { a, b, c } = intersects[0].face
+    let { color } = intersects[0].object.geometry.attributes
+    color.setX(a, .1)
+    color.setY(a, .5)
+    color.setZ(a, 1)
+
+    color.setX(b, .1)
+    color.setY(b, .5)
+    color.setZ(b, 1)
+
+    color.setX(c, .1)
+    color.setY(c, .5)
+    color.setZ(c, 1)
+    color.needsUpdate = true
+  }
 }
 animate()
+addEventListener('mousemove', e => {
+  mouse.x = (e.clientX / innerWidth) * 2 - 1
+  mouse.y = -(e.clientY / innerHeight) * 2 + 1
+  //console.log(mouse)
+})
