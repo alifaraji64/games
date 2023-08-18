@@ -2,10 +2,11 @@ import './style.css'
 import * as THREE from 'three'
 import dat from 'dat.gui'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import gsap from 'gsap'
 var gui = new dat.GUI()
-var world = { width: 5, height: 5, widthSegment: 10, heightSegment: 10 }
-gui.add(world, 'width', 1, 10).onChange(() => generateMetarial())
-gui.add(world, 'height', 1, 10).onChange(() => generateMetarial())
+var world = { width: 15, height: 15, widthSegment: 17, heightSegment: 17 }
+gui.add(world, 'width', 1, 15).onChange(() => generateMetarial())
+gui.add(world, 'height', 1, 15).onChange(() => generateMetarial())
 gui.add(world, 'widthSegment', 1, 15).onChange(() => generateMetarial())
 gui.add(world, 'heightSegment', 1, 15).onChange(() => generateMetarial())
 
@@ -16,6 +17,10 @@ const generateMetarial = () => {
     world.height,
     world.widthSegment,
     world.heightSegment
+  )
+  mesh.geometry.setAttribute(
+    'color',
+    new THREE.BufferAttribute(new Float32Array(colors), 3)
   )
   const { array } = mesh.geometry.attributes.position
   for (let i = 0; i < array.length; i += 3) {
@@ -43,7 +48,12 @@ renderer.setPixelRatio(devicePixelRatio)
 
 document.body.appendChild(renderer.domElement)
 
-const geometry = new THREE.PlaneGeometry(5, 5, 10, 10)
+const geometry = new THREE.PlaneGeometry(
+  world.width,
+  world.height,
+  world.widthSegment,
+  world.heightSegment
+)
 const material = new THREE.MeshPhongMaterial({
   side: THREE.DoubleSide,
   flatShading: true,
@@ -67,7 +77,7 @@ for (let i = 0; i < array.length; i += 3) {
 }
 let colors = []
 for (let i = 0; i < array.length; i++) {
-  colors.push(0, .19, .6)
+  colors.push(0, 0.19, 0.6)
 }
 mesh.geometry.setAttribute(
   'color',
@@ -83,18 +93,40 @@ function animate () {
   if (intersects.length) {
     const { a, b, c } = intersects[0].face
     let { color } = intersects[0].object.geometry.attributes
-    color.setX(a, .1)
-    color.setY(a, .5)
-    color.setZ(a, 1)
+    const initialColor = { r: 0, g: 0.19, b: 0.6 }
+    const hoverColor = { r: 0.1, g: 0.5, b: 4 }
+    color.setX(a, hoverColor.r)
+    color.setY(a, hoverColor.g)
+    color.setZ(a, hoverColor.b)
 
-    color.setX(b, .1)
-    color.setY(b, .5)
-    color.setZ(b, 1)
+    color.setX(b, hoverColor.r)
+    color.setY(b, hoverColor.g)
+    color.setZ(b, hoverColor.b)
 
-    color.setX(c, .1)
-    color.setY(c, .5)
-    color.setZ(c, 1)
+    color.setX(c, hoverColor.r)
+    color.setY(c, hoverColor.g)
+    color.setZ(c, hoverColor.b)
     color.needsUpdate = true
+    gsap.to(hoverColor, {
+      r: initialColor.r,
+      g: initialColor.g,
+      b: initialColor.b,
+      duration: 1.5,
+      onUpdate: () => {
+        color.setX(a, hoverColor.r)
+        color.setY(a, hoverColor.g)
+        color.setZ(a, hoverColor.b)
+
+        color.setX(b, hoverColor.r)
+        color.setY(b, hoverColor.g)
+        color.setZ(b, hoverColor.b)
+
+        color.setX(c, hoverColor.r)
+        color.setY(c, hoverColor.g)
+        color.setZ(c, hoverColor.b)
+        color.needsUpdate = true
+      }
+    })
   }
 }
 animate()
